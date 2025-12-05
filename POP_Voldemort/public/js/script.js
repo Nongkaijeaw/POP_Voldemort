@@ -1,12 +1,9 @@
-/* public/js/game.js */
-
-// --- ตัวแปรหลัก ---
 const img = document.getElementById("popcat1");
 const scoreText = document.getElementById("score");
 const myScoreText = document.getElementById('my_score');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// เสียงและรูปภาพ (Path อิงตามโครงสร้าง public/...)
+// เสียงและรูปภาพ
 const audio = new Audio('sounds/Oow.mp3'); 
 const imgPop = 'images/Voldemort_POP.png';
 const imgSmile = 'images/Voldemort_smile.png';
@@ -18,10 +15,16 @@ let score = 0;
 // ดึงคะแนนล่าสุดเมื่อเปิดเว็บ
 async function loadScore() {
     try {
-        // ยิงไปที่ API ที่เราเตรียมไว้ใน server.js
-        // (หมายเหตุ: server.js ต้องมี API /api/score ที่อ่านจาก users table ของคนที่ login อยู่)
-        // แต่ถ้ายังใช้ default_player แบบทดสอบ ก็ใช้ได้เลย
+        // ยิงไปที่ API /api/score
         const res = await fetch('/score'); 
+        
+        // [เพิ่มใหม่] เช็คว่าล็อกอินหรือยัง?
+        if (res.status === 401) {
+            alert("Session หมดอายุ หรือยังไม่ได้เข้าสู่ระบบ");
+            window.location.href = 'login.html'; // ดีดกลับไปหน้า Login
+            return;
+        }
+
         if(res.ok) {
             const data = await res.json();
             score = data.score;
@@ -35,6 +38,7 @@ async function loadScore() {
 // ส่งคะแนนไปบันทึก (เรียกทุกครั้งที่กด)
 async function sendClick() {
     try {
+        // ยิงไปที่ API /api/score
         await fetch('/score', { method: 'POST' });
     } catch (err) {
         console.error("Update score error:", err);
@@ -44,18 +48,18 @@ async function sendClick() {
 // --- 2. Logic เกม (กดแล้วเปลี่ยนรูป+เสียง) ---
 
 function updateDisplay(num) {
-    scoreText.innerText = num;
-    if(myScoreText) myScoreText.innerText = num;
+    scoreText.innerText = num.toLocaleString(); // ใส่ลูกน้ำคั่นหลักพัน
+    if(myScoreText) myScoreText.innerText = num.toLocaleString();
     
-    // อัปเดตในตาราง Leaderboard (แถวที่เขียนว่า You)
+    // อัปเดตในตาราง Leaderboard (แถวที่เขียนว่า You) ถ้ามี
     const tableScore = document.getElementById("table_score");
-    if(tableScore) tableScore.innerText = num;
+    if(tableScore) tableScore.innerText = num.toLocaleString();
 }
 
 function pop() {
     score++;
     updateDisplay(score); // อัปเดตหน้าจอทันทีให้ลื่นไหล
-    sendClick();          // ส่งข้อมูลไปหลังบ้าน (ไม่ต้องรอตอบกลับ)
+    sendClick();          // ส่งข้อมูลไปหลังบ้าน
     
     // เล่นเสียง (Reset เวลาเพื่อให้กดรัวๆ ได้)
     audio.currentTime = 0;
@@ -83,39 +87,78 @@ img.addEventListener("touchend", (e) => {
 });
 
 // --- 3. ระบบ Logout ---
-logoutBtn.addEventListener('click', async () => {
-    if(confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
-        try {
-            await fetch('/logout'); // เรียก API ลบ Cookie
-            window.location.href = 'login.html'; // เด้งกลับหน้า Login
-        } catch (err) {
-            alert("Logout failed");
+if(logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        if(confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
+            try {
+                await fetch('/logout'); // เรียก API ลบ Cookie
+                window.location.href = 'login.html'; // เด้งกลับหน้า Login
+            } catch (err) {
+                alert("Logout failed");
+            }
         }
-    }
-});
-
-// --- 4. Fake Leaderboard Animation (โค้ดเดิมของคุณเพื่อให้ตารางขยับ) ---
-// (ส่วนนี้เป็นแค่ Simulation ให้ดูเหมือนมีคนอื่นเล่นด้วย)
-let hk_score = 120300000;
-let tw_score = 140000;
-let th_score = 130000;
-
-// ใช้ setInterval อัปเดตตัวเลขสมมติในตาราง
-const table = document.getElementById("table");
-
-if(table) {
-    setInterval(() => { 
-        //hk_score += 12; 
-        if(table.rows[0]) table.rows[0].cells[3].innerText = hk_score.toLocaleString(); 
-    }, 50);
-
-    setInterval(() => { 
-        //tw_score += 5; 
-        if(table.rows[1]) table.rows[1].cells[3].innerText = tw_score.toLocaleString(); 
-    }, 200);
-    
-    // ... สามารถเพิ่มประเทศอื่นตามต้องการ ...
+    });
 }
 
-// เริ่มต้นโหลดคะแนนจริง
-loadScore();
+// --- 4. [ส่วนที่เพิ่มใหม่] Real Leaderboard (ดึงข้อมูลจริงจาก DB) ---
+
+async function loadLeaderboard() {
+    try {
+        const res = await fetch('/leaderboard');
+        const data = await res.json();
+        
+        const table = document.getElementById("table");
+        if (!table) return;
+
+        // สร้างหัวตาราง
+        let html = `
+            <tr class="bordered">
+                <th>#</th>
+                <th>Profile</th>
+                <th>Name</th>
+                <th>Pop Count</th>
+            </tr>
+        `;
+
+        const myName = getMyUsername(); // เอาชื่อตัวเองมาเช็ค
+
+        data.forEach((user, index) => {
+            // สร้างลิงก์ไปหน้า Profile
+            const profileLink = `profile.html?user=${user.username}`;
+            
+            // เช็คว่าเป็นตัวเราเองหรือเปล่า (ถ้าใช่ให้ใส่ class ไฮไลท์)
+            const isMe = (user.username === myName);
+            const rowClass = isMe ? "bordered my-row" : "bordered";
+            const rowStyle = isMe ? "background-color: #d1e7dd;" : ""; // สีเขียวอ่อนถ้าเป็นเรา
+
+            html += `
+                <tr class="${rowClass}" style="cursor: pointer; ${rowStyle}" onclick="location.href='${profileLink}'">
+                    <td>${index + 1}</td>
+                    <td><img src="images/${user.img_path}" style="width:30px; height:30px; border-radius:50%; object-fit:cover; border: 1px solid #aaa;"></td>
+                    <td>${user.username} ${isMe ? '(You)' : ''}</td>
+                    <td style="text-align: right; font-weight: bold;">${user.score.toLocaleString()}</td>
+                </tr>
+            `;
+        });
+
+        table.innerHTML = html;
+
+    } catch (err) {
+        console.error("Load leaderboard error:", err);
+    }
+}
+
+// ฟังก์ชันช่วยดึงชื่อตัวเองจาก Cookie (เพื่อเอามาเช็คว่าแถวไหนคือเรา)
+function getMyUsername() {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; username=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// --- เริ่มต้นทำงาน ---
+loadScore();       // โหลดคะแนนตัวเอง
+loadLeaderboard(); // โหลดตารางอันดับ
+
+// ตั้งเวลาให้รีเฟรช Leaderboard ทุกๆ x วินาที (เพื่อให้เห็นคะแนนคนอื่นขยับ)
+setInterval(loadLeaderboard, 1000);
