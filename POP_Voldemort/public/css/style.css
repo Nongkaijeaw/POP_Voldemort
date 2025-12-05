@@ -1,0 +1,160 @@
+/* public/css/style.css */
+
+/* --- ตั้งค่าพื้นฐาน --- */
+body {
+    margin: 0;
+    padding: 0;
+    /* แนะนำ: ให้โหลดรูป bg มาเก็บไว้ในเครื่องที่ public/images/bg.jpg แล้วใช้บรรทัดล่างแทน */
+    /* background-image: url("../images/bg.jpg"); */ 
+    background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRNbEsuMx-KbiTBETbd5Fg6cROa-IsgMFmu1g&s");
+    background-size: cover;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    overflow-y: hidden; /* ป้องกัน Scrollbar ซ้อน */
+    font-family: 'Nunito', sans-serif;
+}
+
+/* จัดกึ่งกลางหน้าจอ */
+.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* เต็มความสูงหน้าจอ */
+}
+
+/* หัวข้อเกม */
+h1 {
+    font-size: 5em;
+    margin: 0 0 10px 0;
+    -webkit-text-stroke: 2px black;
+    color: white;
+    text-shadow: 2px 2px 4px #000;
+}
+
+/* ตัวเลขคะแนน */
+#score {
+    font-size: 4em;
+    -webkit-text-stroke: 2px black;
+    color: white;
+    margin: 0 0 20px 0;
+    font-weight: bold;
+}
+
+/* รูป Voldemort */
+#popcat1 {
+    height: 500px;
+    cursor: pointer;
+    /* ป้องกันการลากรูป */
+    user-select: none;
+    -webkit-user-drag: none; 
+    transition: transform 0.05s;
+}
+
+#popcat1:active {
+    transform: scale(0.98); /* กดแล้วยุบนิดนึง */
+}
+
+/* --- ส่วน Leaderboard (Accordion Style) --- */
+.tabs {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    max-width: 600px; /* จำกัดความกว้างไม่ให้เต็มจอเกินไปบน PC */
+    border-radius: 15px 15px 0 0;
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.5);
+    background: white;
+    z-index: 10;
+}
+
+.tab {
+    width: 100%;
+    overflow: hidden;
+}
+
+/* ตัว input checkbox ใช้เพื่อเช็คสถานะเปิด/ปิด (ซ่อนไว้) */
+input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    z-index: -1;
+}
+
+/* ป้ายแถบ Leaderboard (ส่วนหัวที่คลิกได้) */
+.tab-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #f1f1f1;
+    color: #333;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1.2em;
+    border-radius: 15px 15px 0 0;
+}
+
+/* ลูกศรชี้ขึ้น/ลง */
+.tab-label::after {
+    content: "\25B2"; /* ลูกศรขึ้น */
+    transition: transform 0.3s;
+}
+
+/* เนื้อหาตารางข้างใน (ซ่อนอยู่) */
+.tab-content {
+    max-height: 0;
+    overflow-y: auto; /* ให้ scroll ได้ถ้าข้อมูลเยอะ */
+    background: white;
+    transition: max-height 0.3s ease-out;
+    padding: 0 20px;
+}
+
+/* --- Logic การเปิด/ปิด Leaderboard --- */
+/* เมื่อ Checkbox ถูกติ๊ก (Checked) */
+input:checked + .tab-label::after {
+    transform: rotate(180deg); /* หมุนลูกศร */
+}
+
+input:checked ~ .tab-content {
+    max-height: 50vh; /* ความสูงสูงสุดเมื่อเปิด (ครึ่งหน้าจอ) */
+    padding: 20px; /* คืน padding กลับมา */
+}
+
+/* --- ตารางคะแนน --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+tr.bordered {
+    border-bottom: 1px solid #ddd;
+}
+
+td {
+    padding: 10px;
+    text-align: left;
+}
+
+/* จัดชิดขวาสำหรับคะแนน */
+td:last-child {
+    text-align: right;
+    font-weight: bold;
+}
+
+/* --- Responsive Design (มือถือ) --- */
+@media only screen and (max-width: 480px) {
+    h1 {
+        font-size: 3em;
+    }
+    
+    #score {
+        font-size: 3em;
+    }
+
+    #popcat1 {
+        height: 350px; /* ลดขนาดรูปลงในมือถือ */
+    }
+
+    .tabs {
+        width: 100%; /* มือถือให้เต็มจอ */
+    }
+}
